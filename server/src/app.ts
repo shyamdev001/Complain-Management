@@ -1,4 +1,6 @@
 import express from 'express';
+import fs from 'fs';
+import path from 'path';
 import helmet from 'helmet';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -16,6 +18,12 @@ app.set('trust proxy', 1);
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: 'same-site' },
+    contentSecurityPolicy: {
+      directives: {
+        // Service photos are fetched with the session and shown from blob: URLs.
+        'img-src': ["'self'", 'data:', 'blob:'],
+      },
+    },
   }),
 );
 
@@ -42,11 +50,23 @@ if (env.nodeEnv !== 'test') {
   app.use(morgan(env.isProduction ? 'combined' : 'dev'));
 }
 
-app.use(generalLimiter);
-
 app.get('/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-app.use('/api', apiRouter);
+app.use('/api', generalLimiter, apiRouter);
+app.use('/api', notFoundHandler);
+
+// When the client has been built (production), this one service also serves
+// the screens, so the app and its API share a single address. In development
+// the Vite dev server does this instead and the folder does not exist.
+const clientDist = path.resolve(__dirname, '../../client/dist');
+if (fs.existsSync(path.join(clientDist, 'index.html'))) {
+  app.use(express.static(clientDist, { index: false, maxAge: '1h' }));
+  // Any other address is a page inside the app; the browser router takes it from here.
+  app.get('*', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(clientDist, 'index.html'));
+  });
+}
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -3,10 +3,15 @@
   "private": true,
   "version": "1.0.0",
   "description": "The Solar Coop - Complaint / Service Management",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev:client": "npm --prefix client run dev",
     "dev:server": "npm --prefix server run dev",
     "install:all": "npm --prefix server install && npm --prefix client install",
+    "build": "npm --prefix server ci --include=dev && npm --prefix client ci --include=dev && npm --prefix server run build && npm --prefix client run build",
+    "start": "npm --prefix server start",
     "seed": "npm --prefix server run seed",
     "test": "npm --prefix server run test"
   }

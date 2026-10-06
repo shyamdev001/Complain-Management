@@ -22,7 +22,7 @@ httpOnly cookies.
 
 ```bash
 npm run install:all
-npm run seed          # creates AP Enterprise + Navia and the first office login
+npm run seed          # optional: the server also creates AP Enterprise, Navia and the first login on start
 npm run dev:server    # http://localhost:5050
 npm run dev:client    # http://localhost:5174
 ```
@@ -34,6 +34,30 @@ seed creates no customers and no complaints.
 
 Tests: `npm test` (20 API tests against an in-memory MongoDB — workflow, Excel
 export and import, access, reopen, overdue/SLA, photos, webhook).
+
+## Hosting (Render + MongoDB Atlas, free)
+
+In production one service runs everything: the server also serves the built
+screens, so there is a single address and login cookies stay on one site.
+`render.yaml` describes it.
+
+1. **MongoDB Atlas** — create a free cluster, add a database user, allow
+   access from anywhere (`0.0.0.0/0`, Render's free addresses change), and
+   copy the connection string. Put the database name in it:
+   `mongodb+srv://USER:PASSWORD@cluster.xxxxx.mongodb.net/solar-coop-complaints`
+2. **Render** — New → Blueprint → pick this repository. Render reads
+   `render.yaml` and asks for three values:
+   - `MONGODB_URI` — the Atlas string from step 1
+   - `SEED_ADMIN_EMAIL` — the email the office will sign in with
+   - `SEED_ADMIN_PASSWORD` — the first password (8+ characters)
+3. Wait for the first deploy, open the `…onrender.com` address and sign in.
+
+On first start the server creates AP Enterprise, Navia and that first office
+login. Later pushes to `main` redeploy automatically.
+
+Free-plan limits: the service sleeps after about 15 minutes without use (the
+next visit takes up to a minute to wake it), and its disk is not kept, so set
+the three `CLOUDINARY_*` variables before relying on service photos.
 
 ## The Excel sheet
 

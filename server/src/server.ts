@@ -2,9 +2,11 @@ import { app } from './app';
 import { env } from './config/env';
 import { connectDatabase } from './config/db';
 import { startOverdueSweep } from './services/overdue.service';
+import { ensureFirstRunData } from './services/bootstrap.service';
 
 async function bootstrap() {
   await connectDatabase();
+  await ensureFirstRunData();
 
   const server = app.listen(env.port, () => {
     console.log(`[server] listening on port ${env.port} (${env.nodeEnv})`);

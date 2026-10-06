@@ -14,8 +14,9 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   isProduction: process.env.NODE_ENV === 'production',
   port: Number(process.env.PORT ?? 5050),
-  clientUrl: required('CLIENT_URL', 'http://localhost:5174'),
-  serverUrl: required('SERVER_URL', 'http://localhost:5050'),
+  // On Render the public address is provided automatically, so neither needs setting there.
+  clientUrl: required('CLIENT_URL', process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:5174'),
+  serverUrl: required('SERVER_URL', process.env.RENDER_EXTERNAL_URL ?? 'http://localhost:5050'),
 
   mongodbUri: required('MONGODB_URI', 'mongodb://127.0.0.1:27017/solar-coop-complaints'),
 
