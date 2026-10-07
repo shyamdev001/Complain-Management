@@ -42,6 +42,18 @@ export function NewComplaintPage() {
   const [description, setDescription] = React.useState('');
   const [priority, setPriority] = React.useState<Priority>('NORMAL');
   const [installerId, setInstallerId] = React.useState('');
+  /** Name of the installer that was filled in from the customer's record, while the office has not changed it. */
+  const [autoInstaller, setAutoInstaller] = React.useState('');
+
+  // Pre-select the installer who did this customer's installation. It is only a
+  // starting point: the office can pick another, and customers with no (or an
+  // unknown) installer on record leave the field empty so it must be chosen.
+  React.useEffect(() => {
+    const recorded = customer?.installedBy?.trim().toLowerCase();
+    const match = recorded ? installers.find((i) => i.name.toLowerCase() === recorded) : undefined;
+    setInstallerId(match?.id ?? '');
+    setAutoInstaller(match?.name ?? '');
+  }, [customer, installers]);
   const [submitting, setSubmitting] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
 
@@ -339,9 +351,23 @@ export function NewComplaintPage() {
               label="Assigned installer"
               required
               error={err('installer')}
-              hint="Choose who will handle this complaint. It goes only on that installer's Excel sheet."
+              hint={
+                autoInstaller
+                  ? `Selected automatically: ${autoInstaller} installed this customer's system. Change it if someone else should handle this complaint.`
+                  : customer && !installerId
+                    ? customer.installedBy
+                      ? `This customer's installer (${customer.installedBy}) is not in the installer list - choose who will handle this complaint.`
+                      : 'No installer is recorded for this customer - choose who will handle this complaint.'
+                    : "Choose who will handle this complaint. It goes only on that installer's Excel sheet."
+              }
             >
-              <Select value={installerId} onValueChange={setInstallerId}>
+              <Select
+                value={installerId}
+                onValueChange={(value) => {
+                  setInstallerId(value);
+                  setAutoInstaller('');
+                }}
+              >
                 <SelectTrigger aria-label="Assigned installer" className={cn(err('installer') && 'border-destructive')}>
                   <SelectValue placeholder="Select installer" />
                 </SelectTrigger>

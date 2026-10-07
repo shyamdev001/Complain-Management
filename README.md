@@ -114,8 +114,9 @@ as Resolved).
 - **Access** — every route requires an office login. Installer accounts cannot
   sign in.
 - **Complaint number** — `SC-CMP-000001`, from an atomic counter; never repeats.
-- **Installer selection** — required, no default, never inferred. The
-  customer's "installed by" field is shown for reference only.
+- **Installer selection** — required. It is pre-selected from the customer's
+  "installed by" field when that matches an installer in the list; the office
+  can change it, and must choose when nothing matches.
 - **Customers** — one customer record (`SC-CUS-000001`); complaints reference
   it and keep a small snapshot so old tickets stay readable. A new customer
   can be added inline while creating the complaint.
