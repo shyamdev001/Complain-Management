@@ -32,9 +32,9 @@ export async function ensureFirstRunData(): Promise<void> {
   }
   if (await User.exists({ role: UserRole.SUPER_ADMIN })) return;
 
-  // A hosted app must not come up with a password anyone can read in the repository.
-  if (env.isProduction && !process.env.SEED_ADMIN_PASSWORD) {
-    console.warn('[setup] No office login exists. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD, then restart.');
+  // There is deliberately no built-in password: the first login only exists once someone has chosen one.
+  if (env.seedAdminPassword.length < 8) {
+    console.warn('[setup] No login exists yet. Set SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD (8+ characters), then restart.');
     return;
   }
   await User.create({

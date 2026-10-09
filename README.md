@@ -28,7 +28,8 @@ npm run dev:client    # http://localhost:5174
 ```
 
 `server/.env` holds the configuration (copy `server/.env.example` for a new
-machine). The first login (a super admin) is the `SEED_ADMIN_*` values in that file;
+machine). The first login (a super admin) is the `SEED_ADMIN_*` values in that file -
+set your own password there, none is built in;
 change the password after first login (Installers & Users → Set password). The
 seed creates no customers and no complaints.
 

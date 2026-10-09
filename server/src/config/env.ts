@@ -34,7 +34,7 @@ export const env = {
   webhookSecret: process.env.WEBHOOK_SECRET ?? '',
 
   seedAdminEmail: process.env.SEED_ADMIN_EMAIL ?? 'admin@solarcoop.dev',
-  seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? 'ChangeMe123!',
+  seedAdminPassword: process.env.SEED_ADMIN_PASSWORD ?? '',
 
   rateLimitWindowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 900000),
   rateLimitMax: Number(process.env.RATE_LIMIT_MAX ?? 600),
