@@ -6,7 +6,7 @@ import { User } from '../models/User';
 import { Installer } from '../models/Installer';
 import { AuditLog } from '../models/AuditLog';
 import { Notification } from '../models/Notification';
-import { AuditAction, UserRole, UserStatus } from '../types/enums';
+import { AuditAction, OFFICE_ROLES, UserRole, UserStatus, isOffice } from '../types/enums';
 import { recordAudit } from '../services/audit.service';
 import { actorOf } from '../services/complaint.service';
 import { getSla, saveSla } from '../services/sla.service';
@@ -75,12 +75,12 @@ function serializeUser(u: any) {
 }
 
 export const listUsers = catchAsync(async (_req: Request, res: Response) => {
-  const users = await User.find({ role: UserRole.ADMIN }).sort({ role: 1, createdAt: 1 }).lean();
+  const users = await User.find({ role: { $in: OFFICE_ROLES } }).sort({ createdAt: 1 }).lean();
   res.json({ users: users.map(serializeUser) });
 });
 
 export const createUser = catchAsync(async (req: Request, res: Response) => {
-  const { name, email, phone, password } = req.body;
+  const { name, email, phone, password, role } = req.body;
 
   if (await User.findOne({ email })) throw ApiError.conflict('An account with this email already exists');
 
@@ -88,7 +88,7 @@ export const createUser = catchAsync(async (req: Request, res: Response) => {
     name,
     email,
     phone: phone || undefined,
-    role: UserRole.ADMIN,
+    role,
     passwordHash: await bcrypt.hash(password, 12),
   });
 
@@ -98,6 +98,7 @@ export const createUser = catchAsync(async (req: Request, res: Response) => {
     targetType: 'User',
     targetId: user._id.toString(),
     targetLabel: user.name,
+    details: role === UserRole.SUPER_ADMIN ? 'Super admin' : 'Office staff',
     req,
   });
 
@@ -139,6 +140,30 @@ export const updateUserStatus = catchAsync(async (req: Request, res: Response) =
     req,
   });
   res.json({ user: { id: String(user._id), status: user.status } });
+});
+
+/**
+ * Makes someone a super admin or office staff. Nobody can change their own
+ * role (or disable themselves), so there is always at least one super admin.
+ */
+export const updateUserRole = catchAsync(async (req: Request, res: Response) => {
+  const user = await User.findById(req.params.id);
+  if (!user || !OFFICE_ROLES.includes(user.role)) throw ApiError.notFound('User not found');
+  if (String(user._id) === req.user!.id) throw ApiError.badRequest('You cannot change your own role');
+
+  const from = user.role;
+  user.role = req.body.role;
+  await user.save();
+  await recordAudit({
+    action: AuditAction.USER_ROLE_CHANGED,
+    actor: actorOf(req),
+    targetType: 'User',
+    targetId: user._id.toString(),
+    targetLabel: user.name,
+    details: `${from} -> ${user.role}`,
+    req,
+  });
+  res.json({ user: serializeUser(user.toObject()) });
 });
 
 export const resetUserCredentials = catchAsync(async (req: Request, res: Response) => {
@@ -204,7 +229,7 @@ export const listAuditLogs = catchAsync(async (req: Request, res: Response) => {
 /* ------------------------------------------------------------------ */
 
 function audienceFilter(req: Request) {
-  return req.user!.role === UserRole.ADMIN
+  return isOffice(req.user!.role)
     ? { audience: 'ADMIN' }
     : { audience: 'INSTALLER', installer: req.user!.installerId };
 }

@@ -14,11 +14,13 @@ import {
   OPEN_STATUSES,
   TimelineEvent,
   UserRole,
+  isOffice,
 } from '../types/enums';
 import { recordAudit } from '../services/audit.service';
 import { notify } from '../services/notification.service';
 import { computeDeadlines, overdueFilter } from '../services/sla.service';
-import { readPhoto, savePhoto } from '../services/storage.service';
+import { deletePhoto, readPhoto, savePhoto } from '../services/storage.service';
+import { Notification } from '../models/Notification';
 import { buildInstallerSheet } from '../services/export.service';
 import { importInstallerSheet } from '../services/import.service';
 import {
@@ -90,7 +92,7 @@ function formatWhen(date: Date): string {
 
 export const listComplaints = catchAsync(async (req: Request, res: Response) => {
   const q = req.query as any;
-  const isAdmin = req.user!.role === UserRole.ADMIN;
+  const isAdmin = isOffice(req.user!.role);
   const and: FilterQuery<IComplaint>[] = [];
 
   if (isAdmin) {
@@ -145,7 +147,7 @@ export const listComplaints = catchAsync(async (req: Request, res: Response) => 
 });
 
 export const getStats = catchAsync(async (req: Request, res: Response) => {
-  const isAdmin = req.user!.role === UserRole.ADMIN;
+  const isAdmin = isOffice(req.user!.role);
   const base: FilterQuery<IComplaint> = { archived: false, ...scopeFilter(req) };
 
   const [byStatusRows, overdue] = await Promise.all([
@@ -437,6 +439,25 @@ export const restoreComplaint = catchAsync(async (req: Request, res: Response) =
   respond(req, res, complaint);
 });
 
+/**
+ * Permanent delete - super admin only (enforced on the route). Unlike archive,
+ * the complaint, its history and its photos are gone for good; only the audit
+ * log keeps a record that it existed and who removed it.
+ */
+export const deleteComplaint = catchAsync(async (req: Request, res: Response) => {
+  const complaint = await loadComplaintFor(req, req.params.id);
+  for (const photo of complaint.photos) await deletePhoto(photo);
+  await Notification.deleteMany({ complaint: complaint._id });
+  await complaint.deleteOne();
+  await audit(
+    req,
+    AuditAction.COMPLAINT_DELETED,
+    complaint,
+    `${complaint.customerSnapshot.name}, ${complaint.category}, was ${complaint.status}, ${complaint.assignedInstallerName}`,
+  );
+  res.json({ success: true });
+});
+
 /* ------------------------------------------------------------------ */
 /* Installer progress, recorded by the office                          */
 /* ------------------------------------------------------------------ */
@@ -674,7 +695,7 @@ export const importSheet = catchAsync(async (req: Request, res: Response) => {
 
 export const addNote = catchAsync(async (req: Request, res: Response) => {
   const complaint = await loadComplaintFor(req, req.params.id);
-  const isAdmin = req.user!.role === UserRole.ADMIN;
+  const isAdmin = isOffice(req.user!.role);
   // Only the office can write internal notes; they are never sent to installers.
   const internal = isAdmin && req.body.internal === true;
 

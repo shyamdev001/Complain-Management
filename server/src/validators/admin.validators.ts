@@ -34,12 +34,15 @@ export const listCustomersSchema = z.object({
 });
 
 /* ---- Users ---- */
+const officeRole = z.enum([UserRole.ADMIN, UserRole.SUPER_ADMIN]);
 export const createUserSchema = z.object({
   name: z.string().trim().min(2, 'Name is required').max(120),
   email: z.string().trim().toLowerCase().email('Enter a valid email address'),
   phone: z.union([mobile, z.literal('')]).optional(),
+  role: officeRole.default(UserRole.ADMIN),
   password,
 });
+export const updateUserRoleSchema = z.object({ role: officeRole });
 export const updateUserSchema = z.object({
   name: z.string().trim().min(2).max(120).optional(),
   phone: z.union([mobile, z.literal('')]).optional(),

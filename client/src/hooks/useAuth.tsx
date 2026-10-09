@@ -54,6 +54,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+/** True for the super admin - the only role that may edit or delete existing records and manage logins and settings. */
+export function useIsSuperAdmin(): boolean {
+  return useAuth().user?.role === 'SUPER_ADMIN';
+}
+
 export function useAuth(): AuthContextValue {
   const ctx = React.useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within an AuthProvider');

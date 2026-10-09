@@ -27,7 +27,9 @@ export async function createUser(role: UserRole, installerId?: unknown, name = '
 export async function setupWorld() {
   const ap = await Installer.create({ name: 'AP Enterprise' });
   const navia = await Installer.create({ name: 'Navia' });
-  const admin = await createUser(UserRole.ADMIN, undefined, 'Office Admin');
+  // `admin` is the super admin (can do everything); `staff` is an ordinary office login.
+  const admin = await createUser(UserRole.SUPER_ADMIN, undefined, 'Office Admin');
+  const staff = await createUser(UserRole.ADMIN, undefined, 'Office Staff');
   // A leftover installer login from before installers moved to Excel sheets - it must have no access.
   const installerUser = await createUser(UserRole.INSTALLER, ap._id, 'AP Tech');
   const customer = await Customer.create({
@@ -39,7 +41,7 @@ export async function setupWorld() {
     projectId: 'PRJ-101',
     systemSizeKw: 3,
   });
-  return { ap, navia, admin, installerUser, customer };
+  return { ap, navia, admin, staff, installerUser, customer };
 }
 
 export async function createComplaint(

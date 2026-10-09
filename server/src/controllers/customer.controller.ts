@@ -98,6 +98,30 @@ export const createCustomer = catchAsync(async (req: Request, res: Response) => 
   res.status(201).json({ customer: serializeCustomer(customer), duplicateMobile: sameMobile > 0 });
 });
 
+/** Super admin only. A customer with complaints is kept: the complaints would be left pointing at nothing. */
+export const deleteCustomer = catchAsync(async (req: Request, res: Response) => {
+  const customer = await Customer.findById(req.params.id);
+  if (!customer) throw ApiError.notFound('Customer not found');
+
+  const complaints = await Complaint.countDocuments({ customer: customer._id });
+  if (complaints > 0) {
+    throw ApiError.conflict(
+      `This customer has ${complaints} complaint${complaints === 1 ? '' : 's'} (including archived). Delete those first.`,
+    );
+  }
+  await customer.deleteOne();
+  await recordAudit({
+    action: AuditAction.CUSTOMER_DELETED,
+    actor: actorOf(req),
+    targetType: 'Customer',
+    targetId: customer._id.toString(),
+    targetLabel: `${customer.customerCode} ${customer.name}`.slice(0, 120),
+    details: `Mobile ${customer.mobile}`,
+    req,
+  });
+  res.json({ success: true });
+});
+
 export const updateCustomer = catchAsync(async (req: Request, res: Response) => {
   const customer = await Customer.findById(req.params.id);
   if (!customer) throw ApiError.notFound('Customer not found');

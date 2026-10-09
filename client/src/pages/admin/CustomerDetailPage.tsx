@@ -1,15 +1,16 @@
 import * as React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
-import { ArrowLeft, History, MapPin, Pencil, Phone, Plus } from 'lucide-react';
+import { ArrowLeft, History, MapPin, Pencil, Phone, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomerForm } from '@/components/CustomerForm';
 import { OverdueBadge, StatusBadge } from '@/components/complaints/Badges';
 import { Field, Section } from '@/components/complaints/shared';
-import { getCustomer, updateCustomer } from '@/services/api';
+import { deleteCustomer, getCustomer, updateCustomer } from '@/services/api';
+import { useIsSuperAdmin } from '@/hooks/useAuth';
 import { getErrorMessage } from '@/lib/axios';
 import { mapsUrl } from '@/lib/complaints';
 import { formatDate } from '@/lib/utils';
@@ -21,6 +22,23 @@ export function CustomerDetailPage() {
   const [history, setHistory] = React.useState<ComplaintListItem[]>([]);
   const [error, setError] = React.useState<string | null>(null);
   const [editing, setEditing] = React.useState(false);
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [deleting, setDeleting] = React.useState(false);
+  const isSuper = useIsSuperAdmin();
+  const navigate = useNavigate();
+
+  const removeForGood = async () => {
+    setDeleting(true);
+    try {
+      await deleteCustomer(id!);
+      toast.success('Customer deleted');
+      navigate('/admin/customers', { replace: true });
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      setDeleting(false);
+      setConfirmDelete(false);
+    }
+  };
 
   React.useEffect(() => {
     let cancelled = false;
@@ -64,10 +82,22 @@ export function CustomerDetailPage() {
             <p className="font-mono-brand text-sm text-muted-foreground">{customer.customerCode}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setEditing(true)}>
-              <Pencil className="h-4 w-4" />
-              Edit
-            </Button>
+            {isSuper && (
+              <>
+                <Button
+                  variant="ghost"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setConfirmDelete(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+                <Button variant="outline" onClick={() => setEditing(true)}>
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              </>
+            )}
             <Button asChild>
               <Link to={`/admin/complaints/new?customer=${customer.id}`}>
                 <Plus className="h-4 w-4" />
@@ -155,6 +185,27 @@ export function CustomerDetailPage() {
           </ul>
         )}
       </Section>
+
+      <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {customer.name}?</DialogTitle>
+            <DialogDescription>
+              {history.length > 0
+                ? `This customer has ${history.length} complaint${history.length === 1 ? '' : 's'}. A customer can only be deleted once their complaints have been deleted.`
+                : 'The customer record will be removed for good and cannot be brought back.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmDelete(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" loading={deleting} disabled={history.length > 0} onClick={removeForGood}>
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={editing} onOpenChange={setEditing}>
         <DialogContent className="max-w-2xl">

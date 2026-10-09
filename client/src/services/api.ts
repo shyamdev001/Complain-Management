@@ -79,6 +79,11 @@ export const complaintActions = {
   restore: (id: string) => action(id, 'restore'),
 };
 
+/** Permanent - super admin only. */
+export async function deleteComplaint(id: string): Promise<void> {
+  await api.delete(`/complaints/${id}`);
+}
+
 export async function uploadPhotos(id: string, kind: PhotoKind, files: File[]): Promise<Complaint> {
   const form = new FormData();
   form.append('kind', kind);
@@ -173,6 +178,11 @@ export async function createCustomer(payload: CustomerInput) {
   return data as { customer: Customer; duplicateMobile: boolean };
 }
 
+/** Permanent - super admin only. Refused while the customer still has complaints. */
+export async function deleteCustomer(id: string): Promise<void> {
+  await api.delete(`/customers/${id}`);
+}
+
 export async function updateCustomer(id: string, payload: CustomerInput): Promise<Customer> {
   return (await api.patch(`/customers/${id}`, payload)).data.customer;
 }
@@ -196,9 +206,13 @@ export async function createUser(payload: {
   name: string;
   email: string;
   phone?: string;
+  role: 'ADMIN' | 'SUPER_ADMIN';
   password: string;
 }): Promise<AppUser> {
   return (await api.post('/users', payload)).data.user;
+}
+export async function setUserRole(id: string, role: 'ADMIN' | 'SUPER_ADMIN'): Promise<void> {
+  await api.patch(`/users/${id}/role`, { role });
 }
 export async function setUserStatus(id: string, status: 'ACTIVE' | 'DISABLED'): Promise<void> {
   await api.patch(`/users/${id}/status`, { status });

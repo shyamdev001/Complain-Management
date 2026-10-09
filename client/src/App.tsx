@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { ProtectedRoute, HOME } from '@/components/ProtectedRoute';
+import { ProtectedRoute, SuperAdminRoute, HOME } from '@/components/ProtectedRoute';
 import { useAuth } from '@/hooks/useAuth';
 
 import { LoginPage } from '@/pages/auth/LoginPage';
@@ -57,9 +57,11 @@ export default function App() {
             <Route path="/admin/complaints/:id" element={<ComplaintDetailPage />} />
             <Route path="/admin/customers" element={<CustomersPage />} />
             <Route path="/admin/customers/:id" element={<CustomerDetailPage />} />
-            <Route path="/admin/team" element={<TeamPage />} />
-            <Route path="/admin/settings" element={<SettingsPage />} />
-            <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+            <Route element={<SuperAdminRoute />}>
+              <Route path="/admin/team" element={<TeamPage />} />
+              <Route path="/admin/settings" element={<SettingsPage />} />
+              <Route path="/admin/audit-logs" element={<AuditLogPage />} />
+            </Route>
           </Route>
         </Route>
 

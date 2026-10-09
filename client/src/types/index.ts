@@ -1,4 +1,5 @@
-export type UserRole = 'ADMIN' | 'INSTALLER';
+/** SUPER_ADMIN: full control. ADMIN: office staff doing the daily work. */
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'INSTALLER';
 
 export interface AuthUser {
   id: string;

@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { catchAsync } from '../utils/catchAsync';
 import { ApiError } from '../utils/ApiError';
 import { User } from '../models/User';
-import { AuditAction, UserRole, UserStatus } from '../types/enums';
+import { AuditAction, UserStatus, isOffice } from '../types/enums';
 import {
   clearAuthCookies,
   setAuthCookies,
@@ -37,7 +37,7 @@ export const login = catchAsync(async (req: Request, res: Response) => {
     throw ApiError.forbidden('Your account has been disabled. Contact The Solar Coop office.');
   }
 
-  if (user.role !== UserRole.ADMIN) {
+  if (!isOffice(user.role)) {
     throw ApiError.forbidden('Installer logins are no longer used. Contact The Solar Coop office.');
   }
 

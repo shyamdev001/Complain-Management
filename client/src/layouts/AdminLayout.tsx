@@ -10,9 +10,9 @@ const NAV_ITEMS = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/complaints', label: 'Complaints', icon: ClipboardList },
   { to: '/admin/customers', label: 'Customers', icon: Contact },
-  { to: '/admin/team', label: 'Installers & Users', icon: Users },
-  { to: '/admin/settings', label: 'SLA Settings', icon: Timer },
-  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText },
+  { to: '/admin/team', label: 'Installers & Users', icon: Users, superOnly: true },
+  { to: '/admin/settings', label: 'SLA Settings', icon: Timer, superOnly: true },
+  { to: '/admin/audit-logs', label: 'Audit Logs', icon: ScrollText, superOnly: true },
 ];
 
 export function AdminLayout() {
@@ -25,7 +25,7 @@ export function AdminLayout() {
         <Logo size={38} variant="lockup" />
       </div>
       <nav className="flex flex-1 flex-col gap-1 px-3">
-        {NAV_ITEMS.map((item) => (
+        {NAV_ITEMS.filter((item) => !item.superOnly || user?.role === 'SUPER_ADMIN').map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -52,7 +52,9 @@ export function AdminLayout() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{user?.name}</p>
-            <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {user?.role === 'SUPER_ADMIN' ? 'Super admin' : 'Office staff'}
+            </p>
           </div>
           <button
             onClick={() => logout()}

@@ -19,7 +19,18 @@ export async function ensureFirstRunData(): Promise<void> {
     }
   }
 
-  if (await User.exists({ role: UserRole.ADMIN })) return;
+  // Databases created before the super admin role existed: the first office login becomes the super admin.
+  if (!(await User.exists({ role: UserRole.SUPER_ADMIN }))) {
+    const first =
+      (await User.findOne({ role: UserRole.ADMIN, email: env.seedAdminEmail.toLowerCase() })) ??
+      (await User.findOne({ role: UserRole.ADMIN }).sort({ createdAt: 1 }));
+    if (first) {
+      first.role = UserRole.SUPER_ADMIN;
+      await first.save();
+      console.log(`[setup] ${first.email} is now the super admin`);
+    }
+  }
+  if (await User.exists({ role: UserRole.SUPER_ADMIN })) return;
 
   // A hosted app must not come up with a password anyone can read in the repository.
   if (env.isProduction && !process.env.SEED_ADMIN_PASSWORD) {
@@ -27,10 +38,10 @@ export async function ensureFirstRunData(): Promise<void> {
     return;
   }
   await User.create({
-    name: 'Office Admin',
+    name: 'Super Admin',
     email: env.seedAdminEmail,
-    role: UserRole.ADMIN,
+    role: UserRole.SUPER_ADMIN,
     passwordHash: await bcrypt.hash(env.seedAdminPassword, 12),
   });
-  console.log(`[setup] created the first office login: ${env.seedAdminEmail}`);
+  console.log(`[setup] created the super admin login: ${env.seedAdminEmail}`);
 }

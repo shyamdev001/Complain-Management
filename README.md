@@ -28,12 +28,12 @@ npm run dev:client    # http://localhost:5174
 ```
 
 `server/.env` holds the configuration (copy `server/.env.example` for a new
-machine). The first office login is the `SEED_ADMIN_*` values in that file;
+machine). The first login (a super admin) is the `SEED_ADMIN_*` values in that file;
 change the password after first login (Installers & Users → Set password). The
 seed creates no customers and no complaints.
 
-Tests: `npm test` (20 API tests against an in-memory MongoDB — workflow, Excel
-export and import, access, reopen, overdue/SLA, photos, webhook).
+Tests: `npm test` (26 API tests against an in-memory MongoDB — workflow, Excel
+export and import, roles, reopen, overdue/SLA, photos, webhook).
 
 ## Hosting (Render + MongoDB Atlas, free)
 
@@ -109,10 +109,31 @@ The office can still enter everything by hand on the complaint page (Mark
 Accepted, Schedule Visit, Start Work, Waiting for Parts, service report, Mark
 as Resolved).
 
+## Roles
+
+| | Office staff | Super admin |
+|---|---|---|
+| Create complaints, add customers | ✅ | ✅ |
+| Download and import Excel sheets | ✅ | ✅ |
+| Record progress, reassign, close, reopen, notes, photos | ✅ | ✅ |
+| Edit a complaint's details | ❌ | ✅ |
+| Archive / restore a complaint | ❌ | ✅ |
+| **Delete a complaint permanently** | ❌ | ✅ |
+| Edit a customer | ❌ | ✅ |
+| **Delete a customer** (only when they have no complaints) | ❌ | ✅ |
+| Logins, installers, SLA settings, audit log | ❌ | ✅ |
+
+The server enforces this on every route; the screens simply hide what a role
+cannot use. Deleting is permanent, but the audit log keeps who deleted what.
+A super admin creates logins and chooses each one's role under Installers &
+Users, and cannot disable or demote their own login, so one always remains.
+On a database from before this role existed, the first office login becomes
+the super admin automatically at start-up.
+
 ## How it works
 
 - **Access** — every route requires an office login. Installer accounts cannot
-  sign in.
+  sign in. There are two office roles; see "Roles" below.
 - **Complaint number** — `SC-CMP-000001`, from an atomic counter; never repeats.
 - **Installer selection** — required. It is pre-selected from the customer's
   "installed by" field when that matches an installer in the list; the office
@@ -134,7 +155,8 @@ as Resolved).
 - **Overdue** — response and resolution targets per priority, editable under
   SLA Settings. Overdue complaints are flagged in lists and on the dashboard,
   with a bell notification (a sweep runs every 5 minutes).
-- **Archive** — soft delete. There is no hard-delete route.
+- **Archive** — soft delete, kept with its full history. Permanent delete is a
+  separate super admin action.
 - **Photos** — optional; if the installer sends photos the office can attach
   them. Stored privately in the server's `uploads/` folder, or in Cloudinary
   when the three `CLOUDINARY_*` values are set.

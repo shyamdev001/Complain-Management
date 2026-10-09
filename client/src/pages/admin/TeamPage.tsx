@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { toast } from 'sonner';
-import { KeyRound, Plus, UserPlus } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck, UserPlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dialog';
 import { FormField } from '@/components/ui/form-field';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageHeader } from '@/components/PageHeader';
@@ -24,6 +25,7 @@ import {
   listInstallers,
   listUsers,
   resetUserPassword,
+  setUserRole,
   setUserStatus,
   updateInstaller,
 } from '@/services/api';
@@ -46,10 +48,12 @@ function AddUserDialog({
   const [email, setEmail] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [role, setRole] = React.useState<'ADMIN' | 'SUPER_ADMIN'>('ADMIN');
   const [busy, setBusy] = React.useState(false);
 
   React.useEffect(() => {
     if (!open) return;
+    setRole('ADMIN');
     setName('');
     setEmail('');
     setPhone('');
@@ -60,7 +64,7 @@ function AddUserDialog({
     e.preventDefault();
     setBusy(true);
     try {
-      await createUser({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, password });
+      await createUser({ name: name.trim(), email: email.trim(), phone: phone.trim() || undefined, role, password });
       toast.success('Login created');
       onCreated();
       onOpenChange(false);
@@ -76,9 +80,23 @@ function AddUserDialog({
       <DialogContent>
         <form onSubmit={submit} className="grid gap-4">
           <DialogHeader>
-            <DialogTitle>Add office login</DialogTitle>
-            <DialogDescription>For Solar Coop office staff. Every office login can see and do everything.</DialogDescription>
+            <DialogTitle>Add login</DialogTitle>
+            <DialogDescription>
+              Office staff do the daily work. A super admin can also edit and delete records and manage logins,
+              installers and settings.
+            </DialogDescription>
           </DialogHeader>
+          <FormField label="Access" required>
+            <Select value={role} onValueChange={(v) => setRole(v as 'ADMIN' | 'SUPER_ADMIN')}>
+              <SelectTrigger aria-label="Access">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ADMIN">Office staff</SelectItem>
+                <SelectItem value="SUPER_ADMIN">Super admin</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
           <FormField label="Name" htmlFor="user-name" required>
             <Input id="user-name" value={name} onChange={(e) => setName(e.target.value)} minLength={2} maxLength={120} required />
           </FormField>
@@ -219,6 +237,17 @@ export function TeamPage() {
     }
   };
 
+  const changeRole = async (user: AppUser) => {
+    const next = user.role === 'SUPER_ADMIN' ? 'ADMIN' : 'SUPER_ADMIN';
+    try {
+      await setUserRole(user.id, next);
+      toast.success(next === 'SUPER_ADMIN' ? `${user.name} is now a super admin` : `${user.name} is now office staff`);
+      load();
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    }
+  };
+
   const toggleUser = async (user: AppUser) => {
     try {
       await setUserStatus(user.id, user.status === 'ACTIVE' ? 'DISABLED' : 'ACTIVE');
@@ -232,8 +261,8 @@ export function TeamPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader
-        title="Installers & office logins"
-        description="The installers you can assign complaints to, and the office staff who can sign in."
+        title="Installers & logins"
+        description="The installers you can assign complaints to, and the people who can sign in."
       />
 
       <h2 className="mb-1 text-lg">Installers</h2>
@@ -274,10 +303,10 @@ export function TeamPage() {
       </form>
 
       <div className="mb-3 mt-10 flex items-center justify-between">
-        <h2 className="text-lg">Office logins</h2>
+        <h2 className="text-lg">Logins</h2>
         <Button onClick={() => setAddingUser(true)}>
           <UserPlus className="h-4 w-4" />
-          Add office login
+          Add login
         </Button>
       </div>
       {!users ? (
@@ -288,6 +317,7 @@ export function TeamPage() {
             <TableRow className="hover:bg-transparent">
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
+              <TableHead>Access</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -297,6 +327,16 @@ export function TeamPage() {
               <TableRow key={user.id}>
                 <TableCell className="font-semibold">{user.name}</TableCell>
                 <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                <TableCell>
+                  {user.role === 'SUPER_ADMIN' ? (
+                    <Badge variant="premium">
+                      <ShieldCheck className="h-3 w-3" />
+                      Super admin
+                    </Badge>
+                  ) : (
+                    <Badge variant="info">Office staff</Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge variant={user.status === 'ACTIVE' ? 'success' : 'secondary'}>
                     {user.status === 'ACTIVE' ? 'Active' : 'Disabled'}
@@ -308,6 +348,11 @@ export function TeamPage() {
                       <KeyRound className="h-3.5 w-3.5" />
                       Set password
                     </Button>
+                    {user.id !== me?.id && (
+                      <Button variant="outline" size="sm" onClick={() => changeRole(user)}>
+                        {user.role === 'SUPER_ADMIN' ? 'Make office staff' : 'Make super admin'}
+                      </Button>
+                    )}
                     {user.id !== me?.id && (
                       <Button variant="outline" size="sm" onClick={() => toggleUser(user)}>
                         {user.status === 'ACTIVE' ? 'Disable' : 'Enable'}

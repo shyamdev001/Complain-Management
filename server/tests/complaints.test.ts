@@ -304,7 +304,8 @@ describe('Service workflow, recorded by the office', () => {
     const id = (await createComplaint(world, world.ap._id)).body.complaint.id;
     const office = api(world.admin.cookie);
 
-    expect((await request(app).delete(`/api/complaints/${id}`).set('Cookie', world.admin.cookie)).status).toBe(404);
+    // Office staff cannot delete; archiving is how a complaint is taken out of the way.
+    expect((await request(app).delete(`/api/complaints/${id}`).set('Cookie', world.staff.cookie)).status).toBe(403);
     expect((await office.post(`/api/complaints/${id}/archive`, { reason: 'Created by mistake' })).status).toBe(200);
 
     expect(await Complaint.countDocuments()).toBe(1);

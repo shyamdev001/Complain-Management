@@ -12,7 +12,9 @@ const id = { params: v.idParamSchema };
 
 // The office does everything. Installers have no login: they receive an Excel
 // sheet (GET /export) and the office records what they report back.
-router.use(requireAuth, requireRole(UserRole.ADMIN));
+// Office staff do the daily work; changing or removing what is already recorded is for the super admin.
+router.use(requireAuth, requireRole(UserRole.ADMIN, UserRole.SUPER_ADMIN));
+const superOnly = requireRole(UserRole.SUPER_ADMIN);
 
 router.get('/', validate({ query: v.listComplaintsSchema }), c.listComplaints);
 router.get('/stats', c.getStats);
@@ -22,13 +24,14 @@ router.post('/', validate({ body: v.createComplaintSchema }), c.createComplaint)
 router.get('/:id', validate(id), c.getComplaint);
 
 // Office decisions
-router.patch('/:id', validate({ ...id, body: v.updateComplaintSchema }), c.updateComplaint);
+router.patch('/:id', superOnly, validate({ ...id, body: v.updateComplaintSchema }), c.updateComplaint);
+router.delete('/:id', superOnly, validate(id), c.deleteComplaint);
 router.post('/:id/reassign', validate({ ...id, body: v.reassignSchema }), c.reassignComplaint);
 router.post('/:id/customer-confirmation', validate({ ...id, body: v.confirmationSchema }), c.recordConfirmation);
 router.post('/:id/close', validate({ ...id, body: v.closeSchema }), c.closeComplaint);
 router.post('/:id/reopen', validate({ ...id, body: v.reopenSchema }), c.reopen);
-router.post('/:id/archive', validate({ ...id, body: v.archiveSchema }), c.archiveComplaint);
-router.post('/:id/restore', validate(id), c.restoreComplaint);
+router.post('/:id/archive', superOnly, validate({ ...id, body: v.archiveSchema }), c.archiveComplaint);
+router.post('/:id/restore', superOnly, validate(id), c.restoreComplaint);
 
 // Recording the installer's progress (told to the office by phone or on the returned sheet)
 router.post('/:id/accept', validate(id), c.acceptComplaint);

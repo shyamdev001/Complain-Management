@@ -1,8 +1,16 @@
 export const UserRole = {
+  /** Full control: also edits and deletes records, manages logins, installers and settings. */
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  /** Office staff: the daily work - complaints, customers, Excel sheets. */
   ADMIN: 'ADMIN',
+  /** Legacy: installers no longer sign in. */
   INSTALLER: 'INSTALLER',
 } as const;
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+/** Anyone who works in the office app - staff or super admin. */
+export const OFFICE_ROLES: UserRole[] = [UserRole.ADMIN, UserRole.SUPER_ADMIN];
+export const isOffice = (role: UserRole): boolean => OFFICE_ROLES.includes(role);
 
 export const UserStatus = {
   ACTIVE: 'ACTIVE',
@@ -130,15 +138,18 @@ export const AuditAction = {
   COMPLAINT_REOPENED: 'COMPLAINT_REOPENED',
   COMPLAINT_ARCHIVED: 'COMPLAINT_ARCHIVED',
   COMPLAINT_RESTORED: 'COMPLAINT_RESTORED',
+  COMPLAINT_DELETED: 'COMPLAINT_DELETED',
   COMPLAINTS_EXPORTED: 'COMPLAINTS_EXPORTED',
   COMPLAINTS_IMPORTED: 'COMPLAINTS_IMPORTED',
   CUSTOMER_CREATED: 'CUSTOMER_CREATED',
   CUSTOMER_UPDATED: 'CUSTOMER_UPDATED',
+  CUSTOMER_DELETED: 'CUSTOMER_DELETED',
   USER_CREATED: 'USER_CREATED',
   USER_UPDATED: 'USER_UPDATED',
   USER_DISABLED: 'USER_DISABLED',
   USER_ENABLED: 'USER_ENABLED',
   USER_CREDENTIALS_RESET: 'USER_CREDENTIALS_RESET',
+  USER_ROLE_CHANGED: 'USER_ROLE_CHANGED',
   INSTALLER_CREATED: 'INSTALLER_CREATED',
   INSTALLER_UPDATED: 'INSTALLER_UPDATED',
   SLA_UPDATED: 'SLA_UPDATED',

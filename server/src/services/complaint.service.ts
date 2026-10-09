@@ -7,6 +7,7 @@ import {
   NotificationType,
   TimelineEvent,
   UserRole,
+  isOffice,
 } from '../types/enums';
 import { ApiError } from '../utils/ApiError';
 import { computeDeadlines, isOverdue } from './sla.service';
@@ -59,7 +60,7 @@ export function addTimeline(
  * always pinned to their own company, whatever else the request asked for.
  */
 export function scopeFilter(req: Request): FilterQuery<IComplaint> {
-  if (req.user!.role === UserRole.ADMIN) return {};
+  if (isOffice(req.user!.role)) return {};
   return { assignedInstaller: req.user!.installerId, archived: false };
 }
 
@@ -72,7 +73,7 @@ export async function loadComplaintFor(req: Request, id: string): Promise<ICompl
   const complaint = await Complaint.findById(id);
   if (!complaint) throw ApiError.notFound('Complaint not found');
 
-  if (req.user!.role !== UserRole.ADMIN) {
+  if (!isOffice(req.user!.role)) {
     const ownsIt = req.user!.installerId && String(complaint.assignedInstaller) === req.user!.installerId;
     if (!ownsIt || complaint.archived) {
       throw ApiError.forbidden('This complaint is not assigned to your company');
@@ -106,7 +107,7 @@ export function serializeComplaint(complaint: IComplaint, role: UserRole) {
       uploadedByName: p.uploadedByName,
       uploadedAt: p.uploadedAt,
     })),
-    timeline: c.timeline.filter((t: ITimelineEntry) => role === UserRole.ADMIN || t.visibility !== 'ADMIN'),
+    timeline: c.timeline.filter((t: ITimelineEntry) => isOffice(role) || t.visibility !== 'ADMIN'),
     isOverdue: isOverdue(c),
     resolutionTimeHours: hoursBetween(c.createdAt, lastResolution?.resolvedAt),
   };

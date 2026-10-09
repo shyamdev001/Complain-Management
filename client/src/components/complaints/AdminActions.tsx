@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { Archive, ArchiveRestore, CheckCircle2, Pencil, RotateCcw, ThumbsDown, ThumbsUp, UserCog } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { Archive, ArchiveRestore, CheckCircle2, Pencil, RotateCcw, ThumbsDown, ThumbsUp, Trash2, UserCog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -16,11 +18,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { PromptDialog } from './shared';
 import type { Run } from './ProgressActions';
-import { complaintActions, listInstallers } from '@/services/api';
+import { complaintActions, deleteComplaint, listInstallers } from '@/services/api';
+import { getErrorMessage } from '@/lib/axios';
+import { useIsSuperAdmin } from '@/hooks/useAuth';
 import { CATEGORIES, PRIORITIES, PRIORITY_LABEL } from '@/lib/complaints';
 import type { Complaint, Installer, Priority } from '@/types';
 
-type DialogName = 'close' | 'reopen' | 'notResolved' | 'archive' | 'reassign' | 'edit' | null;
+type DialogName = 'close' | 'reopen' | 'notResolved' | 'archive' | 'reassign' | 'edit' | 'delete' | null;
 
 function ReassignDialog({
   open,
@@ -222,6 +226,23 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
   const isOpen = !isResolved && !isClosed;
   const confirmation = complaint.customerConfirmation?.status;
   const close = (open: boolean) => !open && setDialog(null);
+  const isSuper = useIsSuperAdmin();
+  const navigate = useNavigate();
+  const [deleting, setDeleting] = React.useState(false);
+
+  const removeForGood = async () => {
+    setDeleting(true);
+    try {
+      await deleteComplaint(id);
+      toast.success(`${complaint.complaintNumber} deleted`);
+      navigate('/admin/complaints', { replace: true });
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+      setDeleting(false);
+    }
+  };
+  // Office staff only ever see this bar for the actions they can take.
+  const showBar = isSuper || isClosed || isOpen;
 
   return (
     <>
@@ -232,10 +253,12 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
               <span className="font-bold">Archived.</span> {complaint.archiveReason} Hidden from lists and from the
               installer sheets; the full history is kept.
             </p>
-            <Button variant="outline" disabled={busy} onClick={() => run(() => complaintActions.restore(id), 'Complaint restored')}>
-              <ArchiveRestore className="h-4 w-4" />
-              Restore
-            </Button>
+            {isSuper && (
+              <Button variant="outline" disabled={busy} onClick={() => run(() => complaintActions.restore(id), 'Complaint restored')}>
+                <ArchiveRestore className="h-4 w-4" />
+                Restore
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
@@ -292,6 +315,7 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
         </Card>
       )}
 
+      {showBar && (
       <Card>
         <CardContent className="flex flex-wrap gap-2 p-4">
           {isClosed && (
@@ -300,7 +324,7 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
               Reopen Complaint
             </Button>
           )}
-          {!isClosed && (
+          {isSuper && !isClosed && (
             <Button variant="outline" disabled={busy} onClick={() => setDialog('edit')}>
               <Pencil className="h-4 w-4" />
               Edit
@@ -318,19 +342,33 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
               </Button>
             </>
           )}
-          {!complaint.archived && (
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-destructive sm:ml-auto"
-              disabled={busy}
-              onClick={() => setDialog('archive')}
-            >
-              <Archive className="h-4 w-4" />
-              Archive
-            </Button>
+          {isSuper && (
+            <span className="flex flex-wrap gap-2 sm:ml-auto">
+              {!complaint.archived && (
+                <Button
+                  variant="ghost"
+                  className="text-muted-foreground hover:text-destructive"
+                  disabled={busy}
+                  onClick={() => setDialog('archive')}
+                >
+                  <Archive className="h-4 w-4" />
+                  Archive
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={busy}
+                onClick={() => setDialog('delete')}
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </Button>
+            </span>
           )}
         </CardContent>
       </Card>
+      )}
 
       <PromptDialog
         open={dialog === 'close'}
@@ -379,6 +417,25 @@ export function AdminActions({ complaint, run, busy }: { complaint: Complaint; r
         confirmLabel="Archive"
         onConfirm={(text) => run(() => complaintActions.archive(id, text), 'Complaint archived')}
       />
+      <Dialog open={dialog === 'delete'} onOpenChange={close}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete {complaint.complaintNumber} permanently?</DialogTitle>
+            <DialogDescription>
+              The complaint for {complaint.customerSnapshot.name}, its whole history and its photos will be removed and
+              cannot be brought back. To only hide it, use Archive instead.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialog(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" loading={deleting} onClick={removeForGood}>
+              Delete permanently
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <ReassignDialog open={dialog === 'reassign'} onOpenChange={close} complaint={complaint} run={run} />
       <EditDialog open={dialog === 'edit'} onOpenChange={close} complaint={complaint} run={run} />
     </>

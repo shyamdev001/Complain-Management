@@ -67,6 +67,20 @@ export async function savePhoto(buffer: Buffer, complaintNumber: string): Promis
   return { storage: 'local', key: relativeKey, mimeType: 'image/jpeg', size: optimized.length };
 }
 
+/** Removes a stored photo. Best effort: a file that is already gone must not block deleting the record. */
+export async function deletePhoto(photo: { storage: string; key: string }): Promise<void> {
+  try {
+    if (photo.storage === 'cloudinary') {
+      await cloudinary.uploader.destroy(photo.key, { resource_type: 'image', type: 'authenticated' });
+      return;
+    }
+    const absolutePath = path.resolve(localRoot(), photo.key);
+    if (absolutePath.startsWith(localRoot() + path.sep)) await fs.unlink(absolutePath);
+  } catch (err) {
+    console.error('[storage] could not delete photo', photo.key, (err as Error).message);
+  }
+}
+
 export async function readPhoto(photo: { storage: string; key: string }): Promise<Buffer> {
   if (photo.storage === 'cloudinary') {
     const url = cloudinary.url(photo.key, {
